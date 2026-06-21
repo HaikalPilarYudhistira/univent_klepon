@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buat Acara — UNIVENTS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Buat baru</span>
+        <h1>Buat acara</h1>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:560px;">
+      <div id="alertBox" class="alert"></div>
+
+      <form id="eventForm">
+        <div class="form-group">
+          <label for="judul">Judul acara</label>
+          <input type="text" id="judul" required placeholder="Contoh: Seminar Karier Digital 2026">
+        </div>
+
+        <div class="form-group">
+          <label for="deskripsi">Deskripsi</label>
+          <textarea id="deskripsi" placeholder="Ceritakan apa yang akan terjadi di acara ini..."></textarea>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="form-group">
+            <label for="kategori">Kategori</label>
+            <select id="kategori">
+              <option value="akademik">Akademik</option>
+              <option value="seni">Seni</option>
+              <option value="olahraga">Olahraga</option>
+              <option value="organisasi">Organisasi</option>
+              <option value="lainnya" selected>Lainnya</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="status">Status</label>
+            <select id="status">
+              <option value="published" selected>Dipublikasikan</option>
+              <option value="draft">Draf</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="lokasi">Lokasi</label>
+          <input type="text" id="lokasi" placeholder="Contoh: Aula Fakultas Teknik">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="form-group">
+            <label for="tanggal_mulai">Tanggal &amp; jam mulai</label>
+            <input type="datetime-local" id="tanggal_mulai" required>
+          </div>
+          <div class="form-group">
+            <label for="tanggal_selesai">Tanggal &amp; jam selesai</label>
+            <input type="datetime-local" id="tanggal_selesai">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="kuota">Kuota peserta</label>
+          <input type="number" id="kuota" min="0" placeholder="0 berarti tidak terbatas">
+        </div>
+
+        <div class="form-group">
+          <label for="poster_url">URL poster (opsional)</label>
+          <input type="url" id="poster_url" placeholder="https://...">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button type="submit" class="btn btn-primary" id="submitBtn">Buat acara</button>
+          <a href="/admin/event-list.html" class="btn btn-ghost">Batal</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('event-add');
+
+  const form = document.getElementById('eventForm');
+  const alertBox = document.getElementById('alertBox');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.className = 'alert';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Menyimpan...';
+
+    try {
+      const body = {
+        judul: document.getElementById('judul').value.trim(),
+        deskripsi: document.getElementById('deskripsi').value.trim(),
+        kategori: document.getElementById('kategori').value,
+        status: document.getElementById('status').value,
+        lokasi: document.getElementById('lokasi').value.trim(),
+        tanggal_mulai: document.getElementById('tanggal_mulai').value,
+        tanggal_selesai: document.getElementById('tanggal_selesai').value || null,
+        kuota: Number(document.getElementById('kuota').value) || 0,
+        poster_url: document.getElementById('poster_url').value.trim() || null,
+      };
+
+      await UNIVENTS.api('/events', { method: 'POST', body });
+      window.location.href = '/admin/event-list.html';
+    } catch (err) {
+      UNIVENTS.showAlert(alertBox, err.message, 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Buat acara';
+    }
+  });
+</script>
+
+</body>
+</html>

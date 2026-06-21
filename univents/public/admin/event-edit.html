@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Acara — UNIVENTS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Perbarui</span>
+        <h1>Edit acara</h1>
+      </div>
+    </div>
+
+    <div class="card" style="max-width:560px;">
+      <div id="alertBox" class="alert"></div>
+      <div id="formContainer">
+        <div class="loading-state">Memuat data acara...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('event-list');
+
+  const eventId = new URLSearchParams(window.location.search).get('id');
+  const formContainer = document.getElementById('formContainer');
+  const alertBox = document.getElementById('alertBox');
+
+  function toLocalInput(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  async function load() {
+    if (!eventId) {
+      formContainer.innerHTML = `<div class="empty-state"><p>ID acara tidak ditemukan.</p></div>`;
+      return;
+    }
+
+    try {
+      const data = await UNIVENTS.api(`/events/${eventId}`);
+      const ev = data.event;
+
+      formContainer.innerHTML = `
+        <form id="eventForm">
+          <div class="form-group">
+            <label for="judul">Judul acara</label>
+            <input type="text" id="judul" required value="${ev.judul.replace(/"/g, '&quot;')}">
+          </div>
+
+          <div class="form-group">
+            <label for="deskripsi">Deskripsi</label>
+            <textarea id="deskripsi">${ev.deskripsi || ''}</textarea>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label for="kategori">Kategori</label>
+              <select id="kategori">
+                <option value="akademik" ${ev.kategori === 'akademik' ? 'selected' : ''}>Akademik</option>
+                <option value="seni" ${ev.kategori === 'seni' ? 'selected' : ''}>Seni</option>
+                <option value="olahraga" ${ev.kategori === 'olahraga' ? 'selected' : ''}>Olahraga</option>
+                <option value="organisasi" ${ev.kategori === 'organisasi' ? 'selected' : ''}>Organisasi</option>
+                <option value="lainnya" ${ev.kategori === 'lainnya' ? 'selected' : ''}>Lainnya</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="status">Status</label>
+              <select id="status">
+                <option value="published" ${ev.status === 'published' ? 'selected' : ''}>Dipublikasikan</option>
+                <option value="draft" ${ev.status === 'draft' ? 'selected' : ''}>Draf</option>
+                <option value="selesai" ${ev.status === 'selesai' ? 'selected' : ''}>Selesai</option>
+                <option value="dibatalkan" ${ev.status === 'dibatalkan' ? 'selected' : ''}>Dibatalkan</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="lokasi">Lokasi</label>
+            <input type="text" id="lokasi" value="${(ev.lokasi || '').replace(/"/g, '&quot;')}">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label for="tanggal_mulai">Tanggal &amp; jam mulai</label>
+              <input type="datetime-local" id="tanggal_mulai" required value="${toLocalInput(ev.tanggal_mulai)}">
+            </div>
+            <div class="form-group">
+              <label for="tanggal_selesai">Tanggal &amp; jam selesai</label>
+              <input type="datetime-local" id="tanggal_selesai" value="${toLocalInput(ev.tanggal_selesai)}">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="kuota">Kuota peserta</label>
+            <input type="number" id="kuota" min="0" value="${ev.kuota || 0}">
+          </div>
+
+          <div class="form-group">
+            <label for="poster_url">URL poster (opsional)</label>
+            <input type="url" id="poster_url" value="${ev.poster_url || ''}">
+          </div>
+
+          <div style="display:flex; gap:10px; margin-top:8px;">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Simpan perubahan</button>
+            <a href="/admin/event-list.html" class="btn btn-ghost">Batal</a>
+          </div>
+        </form>
+      `;
+
+      document.getElementById('eventForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Menyimpan...';
+
+        try {
+          const body = {
+            judul: document.getElementById('judul').value.trim(),
+            deskripsi: document.getElementById('deskripsi').value.trim(),
+            kategori: document.getElementById('kategori').value,
+            status: document.getElementById('status').value,
+            lokasi: document.getElementById('lokasi').value.trim(),
+            tanggal_mulai: document.getElementById('tanggal_mulai').value,
+            tanggal_selesai: document.getElementById('tanggal_selesai').value || null,
+            kuota: Number(document.getElementById('kuota').value) || 0,
+            poster_url: document.getElementById('poster_url').value.trim() || null,
+          };
+
+          await UNIVENTS.api(`/events/${eventId}`, { method: 'PUT', body });
+          window.location.href = '/admin/event-list.html';
+        } catch (err) {
+          UNIVENTS.showAlert(alertBox, err.message, 'error');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Simpan perubahan';
+        }
+      });
+    } catch (err) {
+      formContainer.innerHTML = `<div class="empty-state"><p>Gagal memuat data acara: ${err.message}</p></div>`;
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/api/events/(?<id>[0-9]+)", "destination": "/api/events/[id]?id=$id" },
+    { "source": "/api/peserta/(?<id>[0-9]+)", "destination": "/api/peserta/[id]?id=$id" },
+    { "source": "/api/users/(?<id>[0-9]+)", "destination": "/api/users/[id]?id=$id" }
+  ]
+}

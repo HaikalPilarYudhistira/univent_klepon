@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daftar — UNIVENTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-brand">UNI<span>VENTS</span></div>
+    <p class="auth-subtitle">Buat akun mahasiswa untuk mulai mendaftar acara.</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="nama">Nama lengkap</label>
+        <input type="text" id="nama" required placeholder="Nama sesuai KTM">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required placeholder="nama@kampus.ac.id" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="nim">NIM</label>
+        <input type="text" id="nim" placeholder="Nomor induk mahasiswa">
+      </div>
+      <div class="form-group">
+        <label for="jurusan">Jurusan</label>
+        <input type="text" id="jurusan" placeholder="Contoh: Teknik Informatika">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required placeholder="Minimal 6 karakter" autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Buat akun</button>
+    </form>
+
+    <p class="auth-switch">Sudah punya akun? <a href="/mahasiswa/login.html">Masuk di sini</a></p>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  const form = document.getElementById('registerForm');
+  const alertBox = document.getElementById('alertBox');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.className = 'alert';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Memproses...';
+
+    try {
+      const body = {
+        nama: document.getElementById('nama').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        nim: document.getElementById('nim').value.trim(),
+        jurusan: document.getElementById('jurusan').value.trim(),
+        password: document.getElementById('password').value,
+      };
+
+      const data = await UNIVENTS.api('/auth/register', { method: 'POST', body });
+
+      UNIVENTS.setSession(data.token, data.user);
+      window.location.href = '/mahasiswa/events.html';
+    } catch (err) {
+      UNIVENTS.showAlert(alertBox, err.message, 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Buat akun';
+    }
+  });
+</script>
+
+</body>
+</html>

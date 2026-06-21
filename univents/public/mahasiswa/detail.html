@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detail Acara — UNIVENTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">UNI<span>VENTS</span></div>
+  <div class="navbar-links">
+    <a href="/mahasiswa/events.html">Acara</a>
+    <a href="/mahasiswa/notifikasi.html">Notifikasi</a>
+    <a href="#" id="logoutLink">Keluar</a>
+  </div>
+</nav>
+
+<div class="main" style="max-width:700px; margin:0 auto;">
+  <a href="/mahasiswa/events.html" class="btn btn-ghost btn-sm" style="margin-bottom:24px;">← Kembali ke daftar acara</a>
+  <div id="detailContainer">
+    <div class="loading-state">Memuat detail acara...</div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  UNIVENTS.guard('mahasiswa');
+
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    UNIVENTS.logout();
+  });
+
+  const container = document.getElementById('detailContainer');
+  const eventId = new URLSearchParams(window.location.search).get('id');
+
+  function kategoriLabel(k) {
+    const map = { akademik: 'Akademik', seni: 'Seni', olahraga: 'Olahraga', organisasi: 'Organisasi', lainnya: 'Lainnya' };
+    return map[k] || k;
+  }
+
+  async function load() {
+    if (!eventId) {
+      container.innerHTML = `<div class="empty-state"><p>ID acara tidak ditemukan.</p></div>`;
+      return;
+    }
+
+    try {
+      const [eventData, pesertaData] = await Promise.all([
+        UNIVENTS.api(`/events/${eventId}`),
+        UNIVENTS.api('/peserta').catch(() => ({ peserta: [] })),
+      ]);
+
+      const ev = eventData.event;
+      const sudahDaftar = pesertaData.peserta.some((p) => p.event_id === Number(eventId));
+      const penuh = ev.kuota > 0 && ev.jumlah_peserta >= ev.kuota;
+
+      container.innerHTML = `
+        <div class="card">
+          <span class="badge badge-${ev.kategori}">${kategoriLabel(ev.kategori)}</span>
+          <h1 style="margin-top:14px; font-size:26px;">${ev.judul}</h1>
+          <p style="margin-top:14px; font-size:15px;">${ev.deskripsi || 'Tidak ada deskripsi.'}</p>
+
+          <div style="display:grid; grid-template-columns: repeat(2, 1fr); gap:16px; margin-top:24px; padding-top:20px; border-top:1px solid var(--border);">
+            <div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--fg-muted); text-transform:uppercase;">Tanggal</div>
+              <div style="margin-top:4px;">${UNIVENTS.formatTanggal(ev.tanggal_mulai)}</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--fg-muted); text-transform:uppercase;">Waktu</div>
+              <div style="margin-top:4px;">${UNIVENTS.formatJam(ev.tanggal_mulai)} WIB</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--fg-muted); text-transform:uppercase;">Lokasi</div>
+              <div style="margin-top:4px;">${ev.lokasi || '—'}</div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-mono); font-size:11px; color:var(--fg-muted); text-transform:uppercase;">Peserta</div>
+              <div style="margin-top:4px;">${ev.jumlah_peserta}${ev.kuota > 0 ? ' / ' + ev.kuota : ''} orang</div>
+            </div>
+          </div>
+
+          <div style="margin-top:28px;">
+            ${sudahDaftar
+              ? `<span class="badge" style="background:#2CB67D1A; color:var(--success); padding:10px 16px; font-size:13px;">✓ Kamu sudah terdaftar di acara ini</span>`
+              : penuh
+                ? `<button class="btn btn-ghost btn-block" disabled>Kuota sudah penuh</button>`
+                : `<button class="btn btn-primary btn-block" id="daftarBtn">Daftar acara ini</button>`
+            }
+          </div>
+        </div>
+      `;
+
+      const daftarBtn = document.getElementById('daftarBtn');
+      if (daftarBtn) {
+        daftarBtn.addEventListener('click', async () => {
+          daftarBtn.disabled = true;
+          daftarBtn.textContent = 'Memproses...';
+          try {
+            await UNIVENTS.api('/peserta', { method: 'POST', body: { event_id: Number(eventId) } });
+            load();
+          } catch (err) {
+            alert(err.message);
+            daftarBtn.disabled = false;
+            daftarBtn.textContent = 'Daftar acara ini';
+          }
+        });
+      }
+    } catch (err) {
+      container.innerHTML = `<div class="empty-state"><p>Gagal memuat acara: ${err.message}</p></div>`;
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notifikasi — UNIVENTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="brand">UNI<span>VENTS</span></div>
+  <div class="navbar-links">
+    <a href="/mahasiswa/events.html">Acara</a>
+    <a href="/mahasiswa/notifikasi.html" class="active">Notifikasi</a>
+    <a href="#" id="logoutLink">Keluar</a>
+  </div>
+</nav>
+
+<div class="main" style="max-width:700px; margin:0 auto;">
+  <div class="page-header">
+    <div>
+      <span class="eyebrow">Kotak masuk</span>
+      <h1>Notifikasi</h1>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="markAllBtn">Tandai semua dibaca</button>
+  </div>
+
+  <div id="notifList">
+    <div class="loading-state">Memuat notifikasi...</div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  UNIVENTS.guard('mahasiswa');
+
+  document.getElementById('logoutLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    UNIVENTS.logout();
+  });
+
+  const listEl = document.getElementById('notifList');
+
+  function timeAgo(dateStr) {
+    const diffMs = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'Baru saja';
+    if (mins < 60) return `${mins} menit lalu`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} jam lalu`;
+    const days = Math.floor(hours / 24);
+    return `${days} hari lalu`;
+  }
+
+  async function load() {
+    try {
+      const data = await UNIVENTS.api('/notifikasi');
+      if (data.notifikasi.length === 0) {
+        listEl.innerHTML = `<div class="empty-state"><div class="icon">🔔</div><p>Belum ada notifikasi. Daftar acara untuk mulai menerima info terbaru.</p></div>`;
+        return;
+      }
+
+      listEl.innerHTML = data.notifikasi.map((n) => `
+        <div class="card" style="margin-bottom:12px; ${n.is_read ? 'opacity:0.6;' : 'border-color:var(--accent);'}">
+          <div style="display:flex; justify-content:space-between; gap:12px;">
+            <h3 style="font-size:15px;">${n.judul}</h3>
+            <span style="font-family:var(--font-mono); font-size:11px; color:var(--fg-muted); white-space:nowrap;">${timeAgo(n.created_at)}</span>
+          </div>
+          <p style="margin-top:8px; font-size:14px;">${n.pesan}</p>
+          ${n.event_id ? `<a href="/mahasiswa/detail.html?id=${n.event_id}" style="font-size:13px; color:var(--accent); font-weight:600; margin-top:10px; display:inline-block;">Lihat acara →</a>` : ''}
+        </div>
+      `).join('');
+    } catch (err) {
+      listEl.innerHTML = `<div class="empty-state"><p>Gagal memuat notifikasi: ${err.message}</p></div>`;
+    }
+  }
+
+  document.getElementById('markAllBtn').addEventListener('click', async () => {
+    try {
+      await UNIVENTS.api('/notifikasi', { method: 'PUT', body: {} });
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  load();
+</script>
+
+</body>
+</html>

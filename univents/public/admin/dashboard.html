@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Admin — UNIVENTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Ringkasan</span>
+        <h1>Dashboard</h1>
+      </div>
+    </div>
+
+    <div id="statsRow" style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:32px;">
+      <div class="loading-state">Memuat statistik...</div>
+    </div>
+
+    <div class="page-header" style="margin-top:8px;">
+      <h3 style="font-size:18px;">Acara mendatang</h3>
+      <a href="/admin/event-list.html" class="btn btn-ghost btn-sm">Lihat semua</a>
+    </div>
+    <div id="upcomingList" class="event-grid">
+      <div class="loading-state">Memuat acara...</div>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('dashboard');
+
+  function kategoriLabel(k) {
+    const map = { akademik: 'Akademik', seni: 'Seni', olahraga: 'Olahraga', organisasi: 'Organisasi', lainnya: 'Lainnya' };
+    return map[k] || k;
+  }
+
+  async function loadStats() {
+    try {
+      const [eventsData, usersData] = await Promise.all([
+        UNIVENTS.api('/events'),
+        UNIVENTS.api('/users'),
+      ]);
+
+      const events = eventsData.events;
+      const totalPeserta = events.reduce((sum, e) => sum + Number(e.jumlah_peserta), 0);
+      const mahasiswaCount = usersData.users.filter((u) => u.role === 'mahasiswa').length;
+      const akanDatang = events.filter((e) => new Date(e.tanggal_mulai) > new Date() && e.status === 'published');
+
+      document.getElementById('statsRow').innerHTML = `
+        <div class="card">
+          <div class="stat-num" style="font-size:28px;">${events.length}</div>
+          <div class="stat-label">Total acara</div>
+        </div>
+        <div class="card">
+          <div class="stat-num" style="font-size:28px;">${akanDatang.length}</div>
+          <div class="stat-label">Akan datang</div>
+        </div>
+        <div class="card">
+          <div class="stat-num" style="font-size:28px;">${totalPeserta}</div>
+          <div class="stat-label">Total pendaftar</div>
+        </div>
+        <div class="card">
+          <div class="stat-num" style="font-size:28px;">${mahasiswaCount}</div>
+          <div class="stat-label">Mahasiswa terdaftar</div>
+        </div>
+      `;
+
+      const upcomingEl = document.getElementById('upcomingList');
+      const top5 = akanDatang.slice(0, 5);
+
+      if (top5.length === 0) {
+        upcomingEl.innerHTML = `<div class="empty-state"><p>Belum ada acara mendatang. <a href="/admin/event-add.html" style="color:var(--accent);">Buat acara baru</a>.</p></div>`;
+        return;
+      }
+
+      upcomingEl.innerHTML = top5.map((ev) => {
+        const d = new Date(ev.tanggal_mulai);
+        return `
+          <div class="ticket-card">
+            <div class="ticket-main">
+              <span class="badge badge-${ev.kategori}">${kategoriLabel(ev.kategori)}</span>
+              <h3 class="ticket-title" style="margin-top:10px;">${ev.judul}</h3>
+              <div class="ticket-meta">
+                <span>📍 ${ev.lokasi || '—'}</span>
+                <span>👥 ${ev.jumlah_peserta}${ev.kuota > 0 ? ' / ' + ev.kuota : ''}</span>
+              </div>
+            </div>
+            <div class="ticket-stub">
+              <span class="date-day">${d.getDate()}</span>
+              <span class="date-month">${d.toLocaleDateString('id-ID', { month: 'short' }).toUpperCase()}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) {
+      document.getElementById('statsRow').innerHTML = `<div class="empty-state"><p>Gagal memuat statistik: ${err.message}</p></div>`;
+    }
+  }
+
+  loadStats();
+</script>
+
+</body>
+</html>

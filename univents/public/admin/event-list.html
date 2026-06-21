@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semua Acara — UNIVENTS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Kelola</span>
+        <h1>Semua acara</h1>
+      </div>
+      <a href="/admin/event-add.html" class="btn btn-primary">+ Buat acara baru</a>
+    </div>
+
+    <div class="card" style="padding:0; overflow-x:auto;">
+      <table id="eventTable">
+        <thead>
+          <tr>
+            <th>Acara</th>
+            <th>Kategori</th>
+            <th>Tanggal</th>
+            <th>Peserta</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="6" class="loading-state">Memuat acara...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('event-list');
+
+  function kategoriLabel(k) {
+    const map = { akademik: 'Akademik', seni: 'Seni', olahraga: 'Olahraga', organisasi: 'Organisasi', lainnya: 'Lainnya' };
+    return map[k] || k;
+  }
+
+  function statusLabel(s) {
+    const map = { draft: 'Draf', published: 'Dipublikasikan', selesai: 'Selesai', dibatalkan: 'Dibatalkan' };
+    return map[s] || s;
+  }
+
+  const tbody = document.querySelector('#eventTable tbody');
+
+  async function load() {
+    try {
+      const data = await UNIVENTS.api('/events');
+      if (data.events.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Belum ada acara. <a href="/admin/event-add.html" style="color:var(--accent);">Buat acara pertama</a>.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = data.events.map((ev) => `
+        <tr>
+          <td><strong>${ev.judul}</strong></td>
+          <td><span class="badge badge-${ev.kategori}">${kategoriLabel(ev.kategori)}</span></td>
+          <td style="font-family:var(--font-mono); font-size:13px;">${UNIVENTS.formatTanggal(ev.tanggal_mulai)}</td>
+          <td>${ev.jumlah_peserta}${ev.kuota > 0 ? ' / ' + ev.kuota : ''}</td>
+          <td><span class="status-${ev.status}">● ${statusLabel(ev.status)}</span></td>
+          <td style="white-space:nowrap;">
+            <a href="/admin/peserta.html?event_id=${ev.id}" class="btn btn-ghost btn-sm">Peserta</a>
+            <a href="/admin/event-edit.html?id=${ev.id}" class="btn btn-ghost btn-sm">Edit</a>
+            <button class="btn btn-danger btn-sm" onclick="hapusEvent(${ev.id}, '${ev.judul.replace(/'/g, "\\'")}')">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Gagal memuat acara: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function hapusEvent(id, judul) {
+    if (!confirm(`Hapus acara "${judul}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await UNIVENTS.api(`/events/${id}`, { method: 'DELETE' });
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>

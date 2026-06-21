@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Masuk — UNIVENTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="auth-shell">
+  <div class="auth-card">
+    <div class="auth-brand">UNI<span>VENTS</span></div>
+    <p class="auth-subtitle">Masuk untuk melihat dan mendaftar acara kampus.</p>
+
+    <div id="alertBox" class="alert"></div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" required placeholder="nama@kampus.ac.id" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" required placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Masuk</button>
+    </form>
+
+    <p class="auth-switch">Belum punya akun? <a href="/mahasiswa/register.html">Daftar di sini</a></p>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script>
+  // Kalau sudah login, langsung arahkan ke halaman yang sesuai.
+  const existingUser = UNIVENTS.getUser();
+  if (existingUser && UNIVENTS.getToken()) {
+    window.location.href = existingUser.role === 'admin' ? '/admin/dashboard.html' : '/mahasiswa/events.html';
+  }
+
+  const form = document.getElementById('loginForm');
+  const alertBox = document.getElementById('alertBox');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    alertBox.className = 'alert';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Memproses...';
+
+    try {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const data = await UNIVENTS.api('/auth/login', {
+        method: 'POST',
+        body: { email, password },
+      });
+
+      UNIVENTS.setSession(data.token, data.user);
+      window.location.href = data.user.role === 'admin' ? '/admin/dashboard.html' : '/mahasiswa/events.html';
+    } catch (err) {
+      UNIVENTS.showAlert(alertBox, err.message, 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Masuk';
+    }
+  });
+</script>
+
+</body>
+</html>

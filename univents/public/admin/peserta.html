@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Peserta — UNIVENTS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Kelola</span>
+        <h1>Peserta acara</h1>
+      </div>
+    </div>
+
+    <div class="form-group" style="max-width:360px; margin-bottom:24px;">
+      <label for="eventSelect">Pilih acara</label>
+      <select id="eventSelect"></select>
+    </div>
+
+    <div class="card" style="padding:0; overflow-x:auto;">
+      <table id="pesertaTable">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>NIM</th>
+            <th>Jurusan</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="6" class="loading-state">Pilih acara untuk melihat peserta</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('peserta');
+
+  const eventSelect = document.getElementById('eventSelect');
+  const tbody = document.querySelector('#pesertaTable tbody');
+  const preselectId = new URLSearchParams(window.location.search).get('event_id');
+
+  function statusBadge(s) {
+    const map = {
+      terdaftar: '<span style="color:var(--fg-muted);">● Terdaftar</span>',
+      hadir: '<span style="color:var(--success);">● Hadir</span>',
+      batal: '<span style="color:var(--danger);">● Dibatalkan</span>',
+    };
+    return map[s] || s;
+  }
+
+  async function loadEventOptions() {
+    try {
+      const data = await UNIVENTS.api('/events');
+      if (data.events.length === 0) {
+        eventSelect.innerHTML = '<option value="">Belum ada acara</option>';
+        return;
+      }
+      eventSelect.innerHTML = data.events.map((e) => `<option value="${e.id}">${e.judul}</option>`).join('');
+      if (preselectId) eventSelect.value = preselectId;
+      loadPeserta(eventSelect.value);
+    } catch (err) {
+      eventSelect.innerHTML = '<option value="">Gagal memuat acara</option>';
+    }
+  }
+
+  async function loadPeserta(eventId) {
+    if (!eventId) return;
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-state">Memuat peserta...</td></tr>';
+    try {
+      const data = await UNIVENTS.api(`/peserta?event_id=${eventId}`);
+      if (data.peserta.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Belum ada peserta yang mendaftar untuk acara ini.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.peserta.map((p) => `
+        <tr>
+          <td><strong>${p.nama}</strong></td>
+          <td>${p.nim || '—'}</td>
+          <td>${p.jurusan || '—'}</td>
+          <td>${p.email}</td>
+          <td>${statusBadge(p.status_kehadiran)}</td>
+          <td style="white-space:nowrap;">
+            ${p.status_kehadiran !== 'hadir' ? `<button class="btn btn-ghost btn-sm" onclick="ubahStatus(${p.id}, 'hadir')">Tandai hadir</button>` : ''}
+            ${p.status_kehadiran !== 'batal' ? `<button class="btn btn-danger btn-sm" onclick="ubahStatus(${p.id}, 'batal')">Batalkan</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state">Gagal memuat peserta: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function ubahStatus(pesertaId, status) {
+    try {
+      await UNIVENTS.api(`/peserta/${pesertaId}`, { method: 'PUT', body: { status_kehadiran: status } });
+      loadPeserta(eventSelect.value);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  eventSelect.addEventListener('change', () => loadPeserta(eventSelect.value));
+
+  loadEventOptions();
+</script>
+
+</body>
+</html>

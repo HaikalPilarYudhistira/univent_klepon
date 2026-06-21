@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pengguna — UNIVENTS Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="shell">
+  <div id="sidebarMount"></div>
+
+  <div class="main">
+    <div class="page-header">
+      <div>
+        <span class="eyebrow">Kelola</span>
+        <h1>Pengguna</h1>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0; overflow-x:auto;">
+      <table id="userTable">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>NIM</th>
+            <th>Jurusan</th>
+            <th>Bergabung</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="7" class="loading-state">Memuat pengguna...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/admin-sidebar.js"></script>
+<script>
+  UNIVENTS.guard('admin');
+  renderAdminSidebar('users');
+
+  const tbody = document.querySelector('#userTable tbody');
+
+  async function load() {
+    try {
+      const data = await UNIVENTS.api('/users');
+      if (data.users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Belum ada pengguna terdaftar.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.users.map((u) => `
+        <tr>
+          <td><strong>${u.nama}</strong></td>
+          <td>${u.email}</td>
+          <td><span class="badge ${u.role === 'admin' ? 'badge-organisasi' : 'badge-akademik'}">${u.role}</span></td>
+          <td>${u.nim || '—'}</td>
+          <td>${u.jurusan || '—'}</td>
+          <td style="font-family:var(--font-mono); font-size:13px;">${UNIVENTS.formatTanggal(u.created_at)}</td>
+          <td>
+            ${u.role !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="hapusUser(${u.id}, '${u.nama.replace(/'/g, "\\'")}')">Hapus</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Gagal memuat pengguna: ${err.message}</td></tr>`;
+    }
+  }
+
+  async function hapusUser(id, nama) {
+    if (!confirm(`Hapus pengguna "${nama}"? Tindakan ini tidak dapat dibatalkan.`)) return;
+    try {
+      await UNIVENTS.api(`/users/${id}`, { method: 'DELETE' });
+      load();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  load();
+</script>
+
+</body>
+</html>
